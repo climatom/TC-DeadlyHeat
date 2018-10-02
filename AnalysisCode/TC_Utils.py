@@ -73,6 +73,68 @@ def get_rc_mask(lons,lats,grid_lon,grid_lat,mask):
         out_rows[ii]=la_idx_sort[jj]; out_cols[ii]=lo_idx_sort[jj]
         
     return out_rows,out_cols ,nmsk
+
+
+@jit
+def get_rc_mask_dist(lons,lats,grid_lon,grid_lat,mask):
+    
+    """
+    
+    Same as above but uses great-circle distances to compute the 
+    nearest neighbours. Note that it also returns the distance between 
+    the grid cell selected, and the TC landfall location
+    
+    Returns:
+	- TC lat
+	- TC lon 
+	- Grid lat
+	- Grid lon
+	- Grid row
+	- Grid col
+	- Distance (km) to TC landfall location
+
+    """
+
+    # Query the input dimensions
+    n=len(lats)
+    nrows,ncols=grid_lon.shape
+
+    # Preallocate array array for output (see preamble for vars out)
+    out=np.zeros((n,7))*np.nan
+
+    # Create an index grid the same shape as the grid_lon/lat arrays 
+    col_grid,row_grid=np.meshgrid(range(ncols),range(nrows))
+
+    # Flatten
+    col_grid=col_grid.flatten(); row_grid=row_grid.flatten()
+    grid_lon=grid_lon.flatten(); grid_lat=grid_lat.flatten()
+    mask=mask.flatten()
+
+    # Iterate over the input lon/lats
+    for ii in range(n):
+	
+    	# Feed to the [fast-ish] Haversine function
+    	d=GF.haversine_fast(lats[ii],lons[ii],grid_lat,grid_lon,miles=False)
+   
+
+	# Order from low [0] --> high [nelem]
+        order=np.argsort(d)
+
+        # This loop will continue selecting grid cells further and further away 
+        # until we have a lon/lat that is also classified as land in the grid data
+	jj=0
+	while mask[order][jj]:
+		jj+=1
+
+	out[ii,0]=lats[ii]; out[ii,1]=lons[ii]
+	out[ii,2]=grid_lat[order][jj]; out[ii,3]=grid_lon[order][jj]
+	out[ii,4]=row_grid[order][jj]; out[ii,5]=col_grid[order][jj]
+        out[ii,6]=d[order][jj]
+	        
+
+    return out,out[:,4],out[:,5]
+
+
               
 @jit
 def get_rc_time_mask(lons,lats,times,grid_lon,grid_lat,grid_times,mask,\
