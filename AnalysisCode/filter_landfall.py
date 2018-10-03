@@ -68,20 +68,46 @@ tcsub=tcdata[idx,:]
 
 # For each landfall location, find the nearest row/column in the WFDEI data
 # Note that "match_meta" returns comprehensive data about the distance between
-# the respective WFDEI grid points and the TC landfall locations. 
+# the respective WFDEI grid points and the TC landfall locations. It also 
+# returns, in the final column, a unique identifying index for the location. 
+# We can use this to ensure that, when a TC makes landfall, we only take the 
+# *initial* landfall time as the reference time 
 match_meta,rows,cols=tc.get_rc_mask_dist(tcsub[:,3],tcsub[:,4],lon2,lat2,msk)
 
-# Loop over the tcsub and write out the id, position, and time. Ensure 
-# that if a TC sits in the same place for more than one time, only the *initial*
-# landfall time is taken. 
+# Loop over the tcsub and write out the id, position, and time... 
 ids=np.unique(tcsub[:,0])
-out=np.zeros((len(tcsub),4))*np.nan
+out=np.zeros((len(tcsub),10))*np.nan
+count=0
 for ii in ids:
-    temp=tcsub[tcsub[:,0]==ii,:]
-    # Loop over times that each TC was over land. Append locations to the 
-    # output if not already present
-    scratch=np.zeros((len(temp)))
-    for jj in range(temp.shape[0]):
-        
+    temp=match_meta[tcsub[:,0]==ii,:]; time_temp=tcsub[tcsub[:,0]==ii,1:3]
+    locs=[]
+    for jj in range(len(temp)):
+        if temp[jj,-1] not in locs:                    
+            out[count,0]=ii # id
+            out[count,1]=time_temp[jj,0] # year
+            out[count,2]=time_temp[jj,1] # jd.frac
+            out[count,3]=temp[jj,0] # lat
+            out[count,4]=temp[jj,1] # lon
+            out[count,5]=temp[jj,2] # grid lat (WFDEI)
+            out[count,6]=temp[jj,3] # grid lon (WFDEI)
+            out[count,7]=temp[jj,4] # grid row (WFDEI)
+            out[count,8]=temp[jj,5] # grid col (WFDEI)
+            out[count,9]=temp[jj,6] # dist between landfall and WFDEI grid point
+            # Store location so we can guard against double counting
+            locs.append(temp[jj,-1])
+            count+=1
+out=out[:count,:]
+
+# ==========#
+# Write out
+# ==========#
+
+# Out name
+fout="/media/gytm3/WD12TB/TropicalCyclones/TC-DeadlyHeat/Data/LandFall.txt"
+# Header
+header="ID\tYEAR\tJD.JD\tLAT\tLON\tGLAT\tGLON\tROW\tCOL\tDIST"
+# Write it
+np.savetxt(fout,out,delimiter="\t",header=header,comments="",fmt="%.3f")
+
     
 

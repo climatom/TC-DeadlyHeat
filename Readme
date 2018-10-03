@@ -1,0 +1,20 @@
+#Readme
+
+This repository explores humid heat and tropical cyclones. 
+
+Files are mainly organised between AnalysisCode and Data directories. Some pre-processing has, however, been done to generate data files
+(e.g. calculation of the Heat Index); and these (large) NetCDF4 files are not saved in this repository. They can be generated using the raw 
+(open-access) WFDEI data and well-known algorithms (in our case implemented with NCL). 
+
+The analysis of the IBTrACS data and WFDEI NetCDF4 data proceeds in this order:
+
+(1) convert2text_pres.py ==> [e.g.] "Hurricanes_press.txt"
+(2) filter_landfall.py   ==> [e.g.] "LandFall.txt"
+(3) gen_met.py...
+...
+etc
+Note that TC_Utils.py has the bulk of the functional code for analysis; and this in turn calls the kitchen-sink "GeneralFunctions.py" module
+
+NB. This readme is not (at present) intended to describe the repository for the benefit of anyone other than the author. Please direct any 
+queries to t.matthews@lboro.ac.uk
+

@@ -100,7 +100,7 @@ def get_rc_mask_dist(lons,lats,grid_lon,grid_lat,mask):
     nrows,ncols=grid_lon.shape
 
     # Preallocate array array for output (see preamble for vars out)
-    out=np.zeros((n,7))*np.nan
+    out=np.zeros((n,8))*np.nan
 
     # Create an index grid the same shape as the grid_lon/lat arrays 
     col_grid,row_grid=np.meshgrid(range(ncols),range(nrows))
@@ -110,6 +110,10 @@ def get_rc_mask_dist(lons,lats,grid_lon,grid_lat,mask):
     grid_lon=grid_lon.flatten(); grid_lat=grid_lat.flatten()
     mask=mask.flatten()
 
+    # Create a reference vector from 1:nelem (enables easy way to keep track of 
+    # which locations have been selected)
+    ref=np.arange(len(grid_lon))
+	
     # Iterate over the input lon/lats
     for ii in range(n):
 	
@@ -129,7 +133,7 @@ def get_rc_mask_dist(lons,lats,grid_lon,grid_lat,mask):
 	out[ii,0]=lats[ii]; out[ii,1]=lons[ii]
 	out[ii,2]=grid_lat[order][jj]; out[ii,3]=grid_lon[order][jj]
 	out[ii,4]=row_grid[order][jj]; out[ii,5]=col_grid[order][jj]
-        out[ii,6]=d[order][jj]
+        out[ii,6]=d[order][jj]; out[ii,7]=ref[order][jj]
 	        
 
     return out,out[:,4],out[:,5]
