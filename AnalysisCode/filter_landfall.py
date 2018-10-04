@@ -9,10 +9,6 @@ More specifically, for each TC, it:
     land)
     
     - Finds/writes the TC lon/lat and distance to WFDEI grid point (listed above)
-    
-Output: txt file with... storm ID | time | WDFEI | lon | WFDEI lat | WFDEI lon 
-| TC lat | TC lon | Distance 
-
 """
 import GeneralFunctions as GF
 import TC_Utils as tc
