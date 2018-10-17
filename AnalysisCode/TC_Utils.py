@@ -8,10 +8,10 @@ probability.
 """
 
 # Import modules
-import numpy as np, os, datetime, GeneralFunctions as GF
+import numpy as np, os, datetime, gzip, itertools, GeneralFunctions as GF, pandas as pd
 from netCDF4 import Dataset
 from numba import jit
-import sys
+import sys, tarfile
 #from cdo import*
 #cdo=Cdo()
 
@@ -1007,7 +1007,141 @@ def _apply_BC(simgrid,corrgrid,simref,mask,missVal,prog=False):
 
     return out
 
-     
+
+def get_gsod_data(master_dir,station_codes, startyr=1950, endyr=2018, parameters=None):
+
+    """
+    Parameters
+    ----------
+    station_codes : str or list
+        Single station code or iterable of station codes to retrieve data for.
+    start : ``None`` or date (see :ref:`dates-and-times`)
+        If specified, data are limited to values after this date.
+    end : ``None`` or date (see :ref:`dates-and-times`)
+
+    Returns
+    -------
+    data_dict : dict
+        Dict with station codes keyed to lists of value dicts.
+
+    Credit: adpated from ulmo
+    """
+
+    data_dict = dict([(station_code, None) for station_code in station_codes])
+
+    for year in range(startyr,endyr+1):
+    	tar_path=master_dir+"/gsod_%.0f.tar"%year
+    	with tarfile.open(tar_path, 'r:') as gsod_tar:
+            stations_in_file = [
+                	name.split('./')[-1].rsplit('-', 1)[0]
+                	for name in gsod_tar.getnames() if len(name) > 1]
+		# List of "hits" (stations we want; stations we can get)
+            stations = list(set(station_codes) & set(stations_in_file))
+
+	    for station in stations:
+                year_data = _read_gsod_file(gsod_tar, station, year)
+		if not year_data is None:
+                    	if not data_dict[station] is None:
+		
+                       		data_dict[station] = np.append(data_dict[station], year_data)
+                    	else:
+                        	data_dict[station] = year_data
+
+   
+    for station, data_array in data_dict.items():
+	
+        if not data_dict[station] is None:
+	    nt=len(data_dict[station])
+            data_dict[station] = _record_array_to_value_dicts(data_array)
+	    corevars = pd.DataFrame(data=np.array([[data_dict[station][ii]["dew_point"],\
+                    		data_dict[station][ii]["mean_temp"],\
+				data_dict[station][ii]["sea_level_pressure"]] \
+				for ii in range(nt)]),\
+				index=[data_dict[station][ii]["date"] for ii in range(nt)],\
+				columns=["dew_point","mean_temp","slp"])
+	else: corevars=np.array([0])
+
+    return data_dict,corevars			
+
+
+
+def _read_gsod_file(gsod_tar, station, year):
+    tar_station_filename = station + '-' + str(year) + '.op.gz'
+    try:
+        gsod_tar.getmember('./' + tar_station_filename)
+    except KeyError:
+        return None
+    
+    ncdc_temp_dir = os.path.join('/tmp/', 'GSOD')
+    if not os.path.isdir(ncdc_temp_dir): os.makedirs(ncdc_temp_dir)
+    temp_path = os.path.join(ncdc_temp_dir, tar_station_filename)
+
+    gsod_tar.extract('./' + tar_station_filename, ncdc_temp_dir)
+    with gzip.open(temp_path, 'rb') as gunzip_f:
+        columns = [
+            # name, length, # of spaces separating previous column, dtype
+            ('USAF', 6, 0, 'U6'),
+            ('WBAN', 5, 1, 'U5'),
+            ('date', 8, 2, object),
+            ('mean_temp', 6, 2, float),
+            ('mean_temp_count', 2, 1, int),
+            ('dew_point', 6, 2, float),
+            ('dew_point_count', 2, 1, int),
+            ('sea_level_pressure', 6, 2, float),
+            ('sea_level_pressure_count', 2, 1, int),
+            ('station_pressure', 6, 2, float),
+            ('station_pressure_count', 2, 1, int),
+            ('visibility', 5, 2, float),
+            ('visibility_count', 2, 1, int),
+            ('mean_wind_speed', 5, 2, float),
+            ('mean_wind_speed_count', 2, 1, int),
+            ('max_wind_speed', 5, 2, float),
+            ('max_gust', 5, 2, float),
+            ('max_temp', 6, 2, float),
+            ('max_temp_flag', 1, 0, 'U1'),
+            ('min_temp', 6, 1, float),
+            ('min_temp_flag', 1, 0, 'U1'),
+            ('precip', 5, 1, float),
+            ('precip_flag', 1, 0, 'U1'),
+            ('snow_depth', 5, 1, float),
+            ('FRSHTT', 6, 2, 'U6'),
+        ]
+
+        dtype = np.dtype([
+            (column[0], column[3])
+            for column in columns])
+
+        # note: ignore initial 0
+        delimiter = itertools.chain(*[column[1:3][::-1] for column in columns])
+        usecols = list(range(1, len(columns) * 2, 2))
+
+        data = np.genfromtxt(gunzip_f, skip_header=1, delimiter=delimiter,
+                usecols=usecols, dtype=dtype, converters={5: _convert_date_string})
+    os.remove(temp_path)
+
+    # somehow we can end up with single-element arrays that are 0-dimensional??
+    # (occurs on tyler's machine but is hard to reproduce)
+    if data.ndim == 0:
+        data = data.flatten()
+
+    return data     
+
+def _convert_date_string(date_string):
+    if date_string == '':
+        return None
+
+    if isinstance(date_string, bytes):
+        date_string = date_string.decode('utf-8')
+
+    return datetime.datetime.strptime(date_string, '%Y%m%d').date()  
+
+def _record_array_to_value_dicts(record_array):
+    names = record_array.dtype.names
+    value_dicts = [
+        dict([(name, value[name_index])
+                for name_index, name in enumerate(names)])
+        for value in record_array]
+    return value_dicts   
     
    
 
