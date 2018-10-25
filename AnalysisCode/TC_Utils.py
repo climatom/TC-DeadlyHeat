@@ -555,7 +555,7 @@ def kernel_doy(date_decimal,tc_id,nyrs,stdv,nd):
     
     return mu,fn
    
-def kernel_smooth_doy(var,date_decimal,stdv):
+def kernel_smooth_doy(var,date_decimal,date_decimal_fit,stdv):
     
     """
     
@@ -571,7 +571,7 @@ def kernel_smooth_doy(var,date_decimal,stdv):
     nd=len(doys)   
     mu=np.zeros(nd)*np.nan
     fn=np.zeros(nd)*np.nan
-    full=np.zeros(len(date_decimal))*np.nan
+    full=np.zeros(len(date_decimal_fit))*np.nan
     
     # Double loop    
     for n in range(nd):
@@ -580,7 +580,7 @@ def kernel_smooth_doy(var,date_decimal,stdv):
         
         for k in range(nd):
             
-            if n==0: mu[k]=np.mean(var[date_decimal==doys[k]]) # Compute this first run
+            if n==0: mu[k]=np.nanmean(var[date_decimal==doys[k]]) # Compute this first run
             
             frac=np.abs((doys[n]-doys[k]))/np.float(nd)
             
@@ -591,10 +591,10 @@ def kernel_smooth_doy(var,date_decimal,stdv):
             inner[k]=mu[k]*np.exp(-0.5*np.power((nk/stdv),2))
             
         fn[n] = np.sum(inner)/(np.sqrt(2*np.pi)*stdv)
-        full[date_decimal==doys[n]]=fn[n]
+        full[date_decimal_fit==doys[n]]=fn[n]
         
     
-    return mu,fn 
+    return mu,fn,full
 
 def nc2text(ncfile,thresh,fo):
     

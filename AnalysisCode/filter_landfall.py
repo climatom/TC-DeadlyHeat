@@ -70,6 +70,12 @@ tcsub=tcdata[idx,:]
 # *initial* landfall time as the reference time 
 match_meta,rows,cols=tc.get_rc_mask_dist(tcsub[:,3],tcsub[:,4],lon2,lat2,msk)
 
+# Also compute indices using "old" (km ignorant) method of finding nearest 
+# neighbour
+test_rows,test_cols,nmsk=tc.get_rc_mask(tcsub[:,3],tcsub[:,4],lon,lat,msk)
+drow=test_rows-rows; dcol=test_cols-cols
+ndiff=np.sum(np.logical_or(drow!=0,dcol!=0))/float(len(drow)) # fraction different
+
 # Loop over the tcsub and write out the id, position, and time... 
 ids=np.unique(tcsub[:,0])
 out=np.zeros((len(tcsub),10))*np.nan

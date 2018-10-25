@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 """
-This script interpolates WFDEI met data to different latitudes and longitudes
+This script interpolates NCEP reanalysis to different latitudes and longitudes
 and writes a combined NetCDF file with data at those points, only. 
 
 Each met variables has the dimensions: 
@@ -88,7 +88,7 @@ locfile="/media/gytm3/WD12TB/TropicalCyclones/TC-DeadlyHeat/Data/LandFall.txt"
 
 # Input (WFDEI) file. This is a template that we'll use to take the WFDEI grid
 # parameters from 
-hifile="/media/gytm3/WD12TB/WATCH3H/Daily/c_HI_1979.nc"
+hifile="/media/gytm3/WD12TB/TropicalCyclones/NCEP_II/hi.2m.watch.1979.nc"
 
 # The name of the file with the grid standard deviations in (elevation)
 stdv_file="/media/gytm3/WD12TB/TropicalCyclones/WATCH/stdev_remap.nc"
@@ -97,7 +97,7 @@ stdv_file="/media/gytm3/WD12TB/TropicalCyclones/WATCH/stdev_remap.nc"
 odir="/media/gytm3/WD12TB/TropicalCyclones/TC-DeadlyHeat/Data/"
 
 # Output file name
-oname=odir+"TC_met_all.nc"
+oname=odir+"NCEP_II_TC_met_all.nc"
 
 # Years to iterate between
 yr_st=1979
@@ -142,14 +142,14 @@ for yy in range(yr_st,yr_stp+1):
     ntime,nrows,ncols=hio.variables["hi"].shape
     
     # repeat with tas
-    to=Dataset(hifile.replace("c_HI_1979","Tair_%.0f"%yy),"r") 
+    to=Dataset(hifile.replace("hi","air").replace("1979","%s"%yy),"r") 
     
     
     # and with humidity
-    qo=Dataset(hifile.replace("c_HI_1979","Qair_%.0f"%yy),"r") 
+    qo=Dataset(hifile.replace("hi","shum").replace("1979","%s"%yy),"r") 
     
     # and, finally, with sea-level pressure
-    po=Dataset(hifile.replace("c_HI_1979","c_Psurf_%.0f"%yy),"r") 
+    po=Dataset(hifile.replace("hi.2m","pres.sfc").replace("1979","%s"%yy),"r") 
         
     
     # =========================#
@@ -162,15 +162,15 @@ for yy in range(yr_st,yr_stp+1):
                      range(ntime)]))
     
     # repeat for tas
-    out_tas.append(np.row_stack([to.variables["Tair"][ii,:,:][rows,cols].data \
+    out_tas.append(np.row_stack([np.squeeze(to.variables["air"][ii,:,:,:])[rows,cols].data \
                                  for ii in \
                      range(ntime)]))    
     # ...for humidity
-    out_q.append(np.row_stack([qo.variables["Qair"][ii,:,:][rows,cols].data \
+    out_q.append(np.row_stack([np.squeeze(qo.variables["shum"][ii,:,:,:])[rows,cols].data \
                                for ii in \
                      range(ntime)]))       
     # ...and for pressure
-    out_p.append(np.row_stack([po.variables["PSurf"][ii,:,:][rows,cols].data \
+    out_p.append(np.row_stack([po.variables["pres"][ii,:,:][rows,cols].data \
                                for ii in \
                      range(ntime)]))
     
